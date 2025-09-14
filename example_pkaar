@@ -1,0 +1,96 @@
+cargo run --example resolve o4dksfbqk85ogzdb5osziw6befigbuxmuxkuxq8434q89uj56uyy
+cargo run --example resolve pdqwbhkrmkwkyf69z1bwgk61h5fjzz5bkp3kxhrkg889jtwrbn5o
+
+cargo run --example publish
+ae915b3e6aa34934542088f364c84b2516e42ba8dc0b3af808c0f3c50fede28d
+
+cargo run --example publish
+
+5tk37c7hw5tn7k77ueppqx9orqt31o6hmfkg6737tb9ykzmz79ao
+tkucztxt7xhrb41miqb7xknhijngpgy7tyhete15ycok7naaonsy permanent tiket
+cargo run --example resolve tkucztxt7xhrb41miqb7xknhijngpgy7tyhete15ycok7naaonsy
+
+
+cargo build --release
+
+
+
+
+
+#[func]
+pub fn resolve_key(&self, key: GString, mode: GString, relays: PackedStringArray) {
+
+    enum Mode {
+        Dht,
+        Relays,
+        Both,
+    }
+
+    let key_str = key.to_string();
+    let public_key = match key_str.as_str().try_into() {
+        Ok(pk) => pk,
+        Err(_) => {
+            godot_error!("❌ Clave zbase32 inválida");
+            return;
+        }
+    };
+
+    let mode_enum = match mode.to_string().to_lowercase().as_str() {
+        "dht" => Mode::Dht,
+        "relays" => Mode::Relays,
+        _ => Mode::Both,
+    };
+
+    let mut builder = pkarr::Client::builder();
+
+    match mode_enum {
+    Mode::Dht => {
+        builder.no_relays();
+    }
+    Mode::Relays => {
+        builder.no_dht();
+        let relay_vec = relays
+            .as_slice()
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>();
+
+        if let Err(e) = builder.relays(&relay_vec) {
+            godot_error!("❌ Error al configurar relays: {:?}", e);
+            return;
+        }
+    }
+    Mode::Both => {}
+}
+
+
+
+    let client = match builder.build() {
+        Ok(c) => c,
+        Err(e) => {
+            godot_error!("❌ Error al construir cliente: {:?}", e);
+            return;
+        }
+    };
+    godot_print!("🔍 Resolviendo clave: {}", key_str);
+
+    std::thread::spawn(move || {
+        let start = std::time::Instant::now();
+        let result = futures::executor::block_on(async {
+            client.resolve(&public_key).await
+        });
+
+        match result {
+            Some(packet) => {
+                godot_print!(
+                    "✅ Resuelto en {:?} ms: {}",
+                    start.elapsed().as_millis(),
+                    packet
+                );
+            }
+            None => {
+                godot_warn!("❌ Falló la resolución de {}", key_str);
+            }
+        }
+    });
+}

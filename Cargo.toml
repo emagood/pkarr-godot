@@ -1,0 +1,17 @@
+[workspace]
+members = [
+  "pkarr",
+  "relay",
+  "cli",
+  "pkarr/godot"
+]
+
+# See: https://github.com/rust-lang/rust/issues/90148#issuecomment-949194352
+resolver = "2"
+
+[workspace.metadata.crane]
+name = "pkarr"
+
+[workspace.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
