@@ -161,11 +161,10 @@ impl Peerinfo {
 
 
 
-/* 
-#[func]
-pub fn publish(&self, key: GString, value: GString, keypass: PackedByteArray) -> bool {
-    let bytes = keypass.to_vec();
 
+#[func]
+pub fn prepare_packet(&self, key: GString, value: GString, mode: GString, relays: PackedStringArray, keypass: PackedByteArray) -> bool {
+    let bytes = keypass.to_vec();
     if bytes.len() != 32 {
         godot_error!("La clave debe tener exactamente 32 bytes, pero tiene {}", bytes.len());
         return false;
@@ -173,89 +172,19 @@ pub fn publish(&self, key: GString, value: GString, keypass: PackedByteArray) ->
 
     let mut secret = [0u8; 32];
     secret.copy_from_slice(&bytes);
-
     let keypair = Keypair::from_secret_key(&secret);
 
-    let name: Name<'_> = match format!("{}.pkarr", key).as_str().try_into() {
+  
+    let name_string = key.to_string();
+    let value_string = value.to_string();
+
+    let converted: Name = match name_string.as_str().try_into() {
         Ok(n) => n,
         Err(e) => {
-            godot_error!("Nombre inválido: {:?}", e);
+            godot_error!("❌ Nombre inválido: {:?}", e);
             return false;
         }
     };
-
-    let txt: TXT<'_> = match value.to_string().as_str().try_into() {
-        Ok(t) => t,
-        Err(e) => {
-            godot_error!("Valor TXT inválido: {:?}", e);
-            return false;
-        }
-    };
-
-    let signed_packet = match SignedPacket::builder().txt(name, txt, 30).sign(&keypair) {
-        Ok(packet) => packet,
-        Err(e) => {
-            godot_error!("Error al firmar el paquete: {:?}", e);
-            return false;
-        }
-    };
-
-    let client = match ClientBlocking::builder().build() {
-        Ok(c) => c,
-        Err(e) => {
-            godot_error!("Error al construir el cliente: {:?}", e);
-            return false;
-        }
-    };
-
-    let instant = Instant::now();
-    match client.publish(&signed_packet, None) {
-        Ok(()) => {
-            godot_print!(
-                "✅ Publicado correctamente en {:?} con clave pública: {}",
-                instant.elapsed(),
-                keypair.public_key()
-            );
-            true
-        }
-        Err(err) => {
-            godot_error!(
-                "❌ Falló la publicación con clave pública {}: {:?}",
-                keypair.public_key(),
-                err
-            );
-            false
-        }
-    }
-}
-
-*/
-
-#[func]
-pub fn prepare_packet(&self, key: GString, value: GString, keypass: PackedByteArray) -> bool {
-    let bytes = keypass.to_vec();
-    if bytes.len() != 32 {
-        godot_error!("La clave debe tener exactamente 32 bytes, pero tiene {}", bytes.len());
-        return false;
-    }
-
-    let mut secret = [0u8; 32];
-    secret.copy_from_slice(&bytes);
-    let keypair = Keypair::from_secret_key(&secret);
-
-    let name =  key.to_string();
-
-   let value_string = value.to_string();
-let name_string = key.to_string();
-let value_string = value.to_string();
-
-let converted: Name = match name_string.as_str().try_into() {
-    Ok(n) => n,
-    Err(e) => {
-        godot_error!("❌ Nombre inválido: {:?}", e);
-        return false;
-    }
-};
 
 let txt_converted: TXT = match value_string.as_str().try_into() {
     Ok(t) => t,
@@ -265,58 +194,102 @@ let txt_converted: TXT = match value_string.as_str().try_into() {
     }
 };
     
-let client = match pkarr::Client::builder().build() {
-    Ok(c) => c,
-    Err(e) => {
-        godot_error!("Error al construir el cliente: {:?}", e);
-        return false;
+
+
+
+
+
+    enum Mode {
+            Dht,
+            Relays,
+            Both,
+        }
+
+        let mode_enum = match mode.to_string().to_lowercase().as_str() {
+            "dht" => Mode::Dht,
+            "relays" => Mode::Relays,
+            _ => Mode::Both,
+        };
+
+        let mut builder = pkarr::Client::builder();
+
+        match mode_enum {
+        Mode::Dht => {
+            builder.no_relays();
+        }
+        Mode::Relays => {
+            builder.no_dht();
+            let relay_vec = relays
+                .as_slice()
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>();
+
+            if let Err(e) = builder.relays(&relay_vec) {
+                godot_error!("❌ Error al configurar relays: {:?}", e);
+                return false;
+            }
+        }
+        Mode::Both => {}
     }
-};
 
 
 
 
 
-    let signed_packet = match SignedPacket::builder()
-    .txt(converted.try_into().unwrap(), txt_converted.try_into().unwrap(), 30)
-    .sign(&keypair)
-{
+    let client = match pkarr::Client::builder().build() {
+        Ok(c) => c,
+        Err(e) => {
+            godot_error!("Error al construir el cliente: {:?}", e);
+            return false;
+        }
+    };
 
-    Ok(packet) => packet,
-    Err(e) => {
-        godot_error!("❌ Error al firmar el paquete: {:?}", e);
-        return false;
-    }
-};
+        let signed_packet = match SignedPacket::builder()
+        .txt(converted.try_into().unwrap(), txt_converted.try_into().unwrap(), 30)
+        .sign(&keypair)
+    {
 
-let instant = Instant::now();
-    godot_print!("✅ Paquete firmado con clave pública: {}", keypair.public_key());
-    let result = futures::executor::block_on(client.publish(&signed_packet, None));
-
-match result {
-    Ok(()) => {
-        godot_print!(
-            "✅ Publicación exitosa: {} en {:?}",
-            keypair.public_key(),
-            instant.elapsed()
-        );
-    }
-    Err(err) => {
-        godot_error!(
-            "❌ Falló la publicación de {}\nError: {}",
-            keypair.public_key(),
-            err
-        );
-    }
-}
-
-    
-    true
-}
+        Ok(packet) => packet,
+        Err(e) => {
+            godot_error!("❌ Error al firmar el paquete: {:?}", e);
+            return false;
+        }
+    };
 
 
-#[func]
-pub fn resolve_key(&mut self, key: GString, mode: GString, relays: PackedStringArray) {
+
+        let instant = Instant::now();
+        godot_print!("✅ Paquete firmado con clave pública: {}", keypair.public_key());
+        let result = futures::executor::block_on(client.publish(&signed_packet, None));
+
+
+
+
+            match result {
+                Ok(()) => {
+                    godot_print!(
+                        "✅ Publicación exitosa: {} en {:?}",
+                        keypair.public_key(),
+                        instant.elapsed()
+                    );
+                }
+                Err(err) => {
+                    godot_error!(
+                        "❌ Falló la publicación de {}\nError: {}",
+                        keypair.public_key(),
+                        err
+                    );
+                }
+            }
+
+                
+                true
+            }
+
+
+    #[func]
+    pub fn resolve_key(&mut self, key: GString, mode: GString, relays: PackedStringArray)-> bool {
 
     enum Mode {
         Dht,
@@ -329,7 +302,7 @@ pub fn resolve_key(&mut self, key: GString, mode: GString, relays: PackedStringA
         Ok(pk) => pk,
         Err(_) => {
             godot_error!("❌ Clave zbase32 inválida");
-            return;
+            return false;
         }
     };
 
@@ -355,7 +328,7 @@ pub fn resolve_key(&mut self, key: GString, mode: GString, relays: PackedStringA
 
         if let Err(e) = builder.relays(&relay_vec) {
             godot_error!("❌ Error al configurar relays: {:?}", e);
-            return;
+            return false;
         }
     }
     Mode::Both => {}
@@ -367,58 +340,37 @@ pub fn resolve_key(&mut self, key: GString, mode: GString, relays: PackedStringA
         Ok(c) => c,
         Err(e) => {
             godot_error!("❌ Error al construir cliente: {:?}", e);
-            return;
+            return false;
         }
     };
     godot_print!("🔍 Resolviendo clave: {}", key_str);
 
-let start = std::time::Instant::now();
-let result = futures::executor::block_on(async {
-    client.resolve(&public_key).await
-});
-
-match result {
-    Some(packet) => {
-        let packet_str = packet.to_string();
-       self.base_mut().emit_signal("resolv", &[GString::from(packet_str).to_variant()]);
-
-        // self.base_mut().emit_signal("resolv", &[GString::from(ip_str).to_variant()]);
-        godot_print!(
-            "✅ Resuelto en {:?} ms: {}",
-            start.elapsed().as_millis(),
-            packet
-        );
-    }
-    None => {
-        godot_warn!("❌ Falló la resolución de {}", key_str);
-    }
-}
-}
-
-    /* 
-
-    std::thread::spawn(move || {
-        let start = std::time::Instant::now();
-        let result = futures::executor::block_on(async {
-            client.resolve(&public_key).await
-        });
-
-        match result {
-            Some(packet) => {
-                godot_print!(
-                    "✅ Resuelto en {:?} ms: {}",
-                    start.elapsed().as_millis(),
-                    packet
-                );
-            }
-            None => {
-                godot_warn!("❌ Falló la resolución de {}", key_str);
-            }
-        }
+    let start = std::time::Instant::now();
+    let result = futures::executor::block_on(async {
+        client.resolve(&public_key).await
     });
-}
 
-*/
+    match result {
+        Some(packet) => {
+            let packet_str = packet.to_string();
+        self.base_mut().emit_signal("resolv", &[GString::from(packet_str).to_variant()]);
+
+            // self.base_mut().emit_signal("resolv", &[GString::from(ip_str).to_variant()]);
+            godot_print!(
+                "✅ Resuelto en {:?} ms: {}",
+                start.elapsed().as_millis(),
+                packet
+            );
+            return true ;
+        }
+        None => {
+            godot_warn!("❌ Falló la resolución de {}", key_str);
+            return false;
+        }
+    }
+    }
+
+
 
 
 
@@ -429,62 +381,29 @@ pub fn search(&self, key: GString, value: GString, keypass: PackedByteArray) -> 
 true
 
  } 
-/* 
-async fn resolve(client: &Client, public_key: &PublicKey, most_recent: bool) {
-    let start = Instant::now();
-
-    match if most_recent {
-        client.resolve_most_recent(public_key).await
-    } else {
-        client.resolve(public_key).await
-    } {
-        Some(signed_packet) => {
-            println!(
-                "\nResolved in {:?} milliseconds {}",
-                start.elapsed().as_millis(),
-                signed_packet
-            );
-        }
-        None => {
-            println!("\nFailed to resolve {}", public_key);
-        }
-    }
-}
 
 
-*/
-
-
-
-  #[func]
-pub fn public_key(&self, key: PackedByteArray) -> PackedByteArray {
+#[func]
+pub fn public_key(&self, key: PackedByteArray) -> GString {
     let bytes = key.to_vec();
 
     if bytes.len() != 32 {
         godot_error!("La clave debe tener exactamente 32 bytes, pero tiene {}", bytes.len());
-        return PackedByteArray::new();
+        return "".into();
     }
 
     let mut secret = [0u8; 32];
     secret.copy_from_slice(&bytes);
 
     let keypair = Keypair::from_secret_key(&secret);
-    let public_key_bytes = keypair.public_key().to_bytes();
-
-    let mut packed = PackedByteArray::new();
-    packed.extend(public_key_bytes.iter().copied());
-
-    packed
+    keypair.public_key().to_string().into()
 }
 
 
 
 
-
-
-
 //# infoips
-
+//test solo
   #[func]
   pub fn info_ips(&mut self) -> bool {
   {
