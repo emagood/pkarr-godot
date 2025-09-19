@@ -16,13 +16,15 @@ script = ExtResource("1_0fbet")
 
 [node name="Label" type="Label" parent="."]
 layout_mode = 0
-offset_left = 629.0
-offset_top = 2.0
-offset_right = 1080.0
-offset_bottom = 487.0
-text_overrun_behavior = 2
+offset_left = 638.0
+offset_top = 3.0
+offset_right = 897.0
+offset_bottom = 647.0
+text = "
+"
+autowrap_mode = 3
 
-[node name="Label2" type="Label" parent="."]
+[node name="publicar" type="Label" parent="."]
 layout_mode = 0
 offset_left = 34.0
 offset_top = 442.0
@@ -83,6 +85,24 @@ offset_right = 87.0
 offset_bottom = 219.0
 text = "dht"
 placeholder_text = "\"dht\" or \"relays\""
+
+[node name="clave" type="LineEdit" parent="."]
+layout_mode = 0
+offset_left = 41.0
+offset_top = 252.0
+offset_right = 289.0
+offset_bottom = 328.0
+text = "Godot"
+placeholder_text = "clave de la llave"
+
+[node name="valor" type="LineEdit" parent="."]
+layout_mode = 0
+offset_left = 45.0
+offset_top = 341.0
+offset_right = 283.0
+offset_bottom = 413.0
+text = "Pkarr_in_rust"
+placeholder_text = "valor de llave"
 
 [connection signal="resolv" from="Peerinfo" to="." method="_on_peerinfo_resolv"]
 [connection signal="pressed" from="Button" to="." method="_on_button_pressed"]

@@ -35,7 +35,7 @@ pub struct Peerinfo {
 #[godot_api]
 impl INode for Peerinfo {
     fn init(base: Base<Node>) -> Self {
-         godot_print!("se inicio peerinfo de oxpiguy");
+         godot_print!("Hello , se inicio peerinfo");
         Self { base }
     }
 }
@@ -113,7 +113,7 @@ impl Peerinfo {
         length
     }
 
-
+/*no se usa  */
    #[func]
     pub fn run_ipfs(&self) -> PackedByteArray {
         godot_print!("run ipfs se ejecuta ");
@@ -129,6 +129,8 @@ impl Peerinfo {
         number
 }
 
+
+/*prueba  */
     #[func]
     pub fn get_secret_bytes(&self) -> PackedByteArray {
         let secret_bytes: [u8; 32] = [
@@ -143,6 +145,11 @@ impl Peerinfo {
 
         packed
     }
+
+
+
+
+
 
    #[func]
     pub fn key_rand(&self) -> PackedByteArray {
@@ -495,7 +502,7 @@ pub fn public_key(&self, key: PackedByteArray) -> GString {
 
 
 
-//GET IPS
+//GET IPS viejo quitar
  #[func]
  fn get_ips(&mut self) -> GString {
     let ips = match GLOBAL_IPS.lock() {
@@ -532,7 +539,7 @@ pub fn public_key(&self, key: PackedByteArray) -> GString {
 //
 
 
-//GET_IPFS
+//GET_IPFS viejo quitar
     #[func]
     fn get_ipfs(&mut self) -> GString {
         let ips = match IP_IPFS.lock() {

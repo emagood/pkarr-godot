@@ -5,6 +5,6 @@ struct RustExtension;
 #[gdextension]
 unsafe impl ExtensionLibrary for RustExtension {}
 
-mod player;
+mod keytool;
 mod peerinfo;
 mod state;

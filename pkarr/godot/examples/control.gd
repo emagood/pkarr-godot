@@ -4,6 +4,7 @@ extends Control
 
 
 func _ready() -> void:
+
 	var pub =$CodeEdit.text #"s7wmbfk7c17eqw4sgncftsd3p4adoqiajixbia5q6c4ywgtawd3y"#"tkucztxt7xhrb41miqb7xknhijngpgy7tyhete15ycok7naaonsy"
 	if pub.length() < 32:
 		pub = "tkucztxt7xhrb41miqb7xknhijngpgy7tyhete15ycok7naaonsy"
@@ -12,7 +13,7 @@ func _ready() -> void:
 
 func _on_peerinfo_resolv(data: String) -> void:
 	prints("desde la señal de godot : " , data)
-	$Label.text = str(data)
+	$Label.text = txt_linea(str(data))
 	pass # Replace with function body.
 
 
@@ -35,9 +36,10 @@ func _on_button_pressed() -> void:
 	var pub = peer.public_key(packed_key)
 	prints(pub)
 	if peer.resolve_key(pub,mode,relays):
-		pass
+		$publicar.text = "echo resolver "
 	else:
 		prints("error")
+		$publicar.text = "error resolver  "
 	
 	pass # Replace with function body.
 
@@ -58,10 +60,24 @@ func _on_button_2_pressed() -> void:
 	for byte in key:
 		packed_key.append(byte)
 	
-	if peer.prepare_packet("Godot","Pkarr_in_rust",mode , relays,packed_key):
-		pass
+	if peer.prepare_packet(str($clave.text),str($valor.text),mode , relays,packed_key):
+		$publicar.text = "publicado "
 	else:
 		prints("error")
+		$publicar.text = "error publicado "
 	
 	
 	pass # Replace with function body.
+
+func txt_linea(linea: String) -> String:
+	var regex = RegEx.new()
+	regex.compile(r'(\w+)\.[^\s]+\s+IN\s+\d+\s+TXT\s+"([^"]+)"')
+
+	var match = regex.search(linea)
+	if match == null:
+		return ""
+
+	var nombre = match.get_string(1)    
+	var contenido = '"' + match.get_string(2) + '"' 
+
+	return nombre + " " + contenido
